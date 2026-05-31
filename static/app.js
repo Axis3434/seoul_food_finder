@@ -129,9 +129,13 @@ document.addEventListener('DOMContentLoaded', () => {
         errorMessage.classList.add('hidden');
         infoMessage.classList.add('hidden');
         
-        btnText.classList.add('hidden');
-        spinner.classList.remove('hidden');
-        submitBtn.disabled = true;
+        if (pageIndex === 0) {
+            btnText.classList.add('hidden');
+            spinner.classList.remove('hidden');
+            submitBtn.disabled = true;
+        } else {
+            document.getElementById('global-spinner').classList.remove('hidden');
+        }
 
         try {
             let data;
@@ -169,10 +173,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 nextBtn.disabled = true;
             }
         } finally {
-            btnText.textContent = '가까운 맛집 찾기';
-            btnText.classList.remove('hidden');
-            spinner.classList.add('hidden');
-            submitBtn.disabled = false;
+            if (pageIndex === 0) {
+                btnText.textContent = '가까운 맛집 찾기';
+                btnText.classList.remove('hidden');
+                spinner.classList.add('hidden');
+                submitBtn.disabled = false;
+            } else {
+                document.getElementById('global-spinner').classList.add('hidden');
+            }
         }
     }
 
