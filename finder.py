@@ -235,7 +235,10 @@ def search_food(location_data, keyword, offset=0):
                 t_time = r.get('tmap_time')
                 
                 dist_str = f"도보 {t_dist}m" if t_dist != 999999 else f"직선 {r.get('distance')}m"
-                time_str = f"약 {t_time // 60}분 소요" if t_time else ""
+                if t_time is not None:
+                    time_str = "약 30초 소요" if t_time < 60 else f"약 {t_time // 60}분 소요"
+                else:
+                    time_str = ""
                 
                 results.append({
                     "name": name,
