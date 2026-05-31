@@ -156,7 +156,7 @@ def search_food(location_data, keyword, offset=0):
         return {"error": "서울 지역이 아닙니다. 서울 내의 위치만 검색 가능합니다."}
         
     if 'address' in location_data and search_mode == 'ADDRESS' and address_type == 'REGION':
-        warning_msg = f"[{address_name}]에 있는 임의의 위치를 기준으로 검색된 결과입니다. 더 정확한 정보를 얻으려면 더 구체적인 주소를 입력해주세요."
+        warning_msg = f"현재 [{address_name}]의 중심 좌표를 기준으로 검색된 결과입니다. '동'이나 '도로명' 등 주소를 조금 더 구체적으로 적어주시면 훨씬 더 정확한 추천을 받아보실 수 있어요!"
 
     results = []
     valid_count = 0
