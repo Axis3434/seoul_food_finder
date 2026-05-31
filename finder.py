@@ -154,7 +154,7 @@ def check_good_price_store(restaurant_name, address, keyword):
     return None, False
 
 def parse_kakao_place(place_url, keyword):
-    return f"메뉴 가격 파싱 불가 (식당 상세 페이지에서 직접 메뉴판 확인 가능)", True
+    return f"식당 상세 페이지에서 직접 메뉴판 확인 가능", True
 
 def search_food(location_data, keyword, offset=0):
     warning_msg = None
