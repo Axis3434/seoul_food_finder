@@ -112,17 +112,43 @@ def search_restaurants_kakao(keyword, lat, lng, page, radius=2000):
 def check_good_price_store(restaurant_name, address, keyword):
     if not PUBLIC_DATA_API_KEY: return None, False
     url = "https://api.odcloud.kr/api/3045247/v1/uddi:12a36b40-6230-4401-b647-b8456a789c7f"
-    params = {"serviceKey": PUBLIC_DATA_API_KEY, "page": 1, "perPage": 10, "cond[업소명::EQ]": restaurant_name}
+    
+    short_name = restaurant_name.replace("식당", "").replace("가든", "").replace("본점", "").strip()
+    if len(short_name) == 0: short_name = restaurant_name
+    search_query = short_name[:3] if len(short_name) >= 2 else short_name
+    
+    params = {"serviceKey": PUBLIC_DATA_API_KEY, "page": 1, "perPage": 20, "cond[업소명::LIKE]": search_query}
     try:
         response = requests.get(url, params=params, timeout=3)
         if response.status_code == 200:
             items = response.json().get('data', [])
             for item in items:
-                for i in range(1, 5):
-                    menu = item.get(f'메뉴{i}')
-                    if menu and keyword.lower() in menu.lower():
-                        price = item.get(f'가격{i}') or '정보 없음'
-                        return f"🟢 착한가격업소: {menu} ({price}원)", True
+                store_name = str(item.get("업소명", "")).strip().replace(" ", "")
+                store_address = str(item.get("주소", "")).strip()
+                name_b = restaurant_name.replace(" ", "")
+                
+                if store_name in name_b or name_b in store_name:
+                    addr_parts = address.split()
+                    store_addr_parts = store_address.split()
+                    
+                    if len(addr_parts) >= 2 and len(store_addr_parts) >= 2:
+                        if addr_parts[0] in store_addr_parts[0] and addr_parts[1] in store_addr_parts[1]:
+                            best_menu = None
+                            best_price = None
+                            
+                            for i in range(1, 5):
+                                menu = item.get(f'메뉴{i}')
+                                if menu:
+                                    price = item.get(f'가격{i}') or '정보 없음'
+                                    if not best_menu:
+                                        best_menu, best_price = menu, price
+                                    if keyword.lower() in str(menu).lower():
+                                        return f"🟢 착한가격업소: {menu} ({price}원)", True
+                            
+                            if best_menu:
+                                return f"🟢 착한가격업소: {best_menu} ({best_price}원) 등", True
+                            else:
+                                return f"🟢 착한가격업소 지정 식당", True
     except:
         pass
     return None, False
