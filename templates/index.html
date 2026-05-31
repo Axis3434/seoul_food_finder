@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서울 맛집 탐색기</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+    
+    <main class="container glass-panel">
+        <header class="header">
+            <div class="icon-wrapper">
+                <span class="icon">🍔</span>
+            </div>
+            <h1>서울 맛집 탐색기</h1>
+            <p>검색할 주소와 먹고 싶은 음식을 입력해 주세요.</p>
+        </header>
+
+        <form id="search-form" class="search-form">
+            <div class="input-group">
+                <label for="address">현재 주소</label>
+                <input type="text" id="address" placeholder="예: 서울특별시 종로구 대학로" required autocomplete="off">
+            </div>
+            
+            <div class="input-group">
+                <label for="keyword">음식 키워드</label>
+                <input type="text" id="keyword" placeholder="예: 떡볶이, 돈까스" required autocomplete="off">
+            </div>
+
+            <button type="submit" id="submit-btn" class="btn-primary">
+                <span id="btn-text">가까운 맛집 찾기</span>
+                <div class="spinner hidden" id="spinner"></div>
+            </button>
+        </form>
+
+        <div id="error-message" class="error-message hidden"></div>
+
+        <section id="results-container" class="results-container hidden">
+            <div class="warning-banner">
+                <span class="warning-icon">⚠️</span>
+                <p>방문하시기 전에 상세 정보 링크를 눌러 꼭 <strong>휴무일 및 영업시간</strong>을 확인해 주세요!</p>
+            </div>
+            
+            <div class="results-header">
+                <h2>추천 맛집</h2>
+                <span id="results-count" class="badge"></span>
+            </div>
+            
+            <div id="map-container" class="map-container hidden">
+                <div id="map"></div>
+            </div>
+
+            <div id="results-list" class="results-list">
+                <!-- 결과 카드 렌더링 -->
+            </div>
+            
+            <div id="pagination" class="pagination hidden">
+                <button id="prev-page-btn" class="btn-page" disabled>이전</button>
+                <span id="page-indicator">1 페이지</span>
+                <button id="next-page-btn" class="btn-page">다음</button>
+            </div>
+        </section>
+        
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>
