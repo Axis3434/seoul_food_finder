@@ -25,9 +25,18 @@
         </header>
 
         <form id="search-form" class="search-form">
+            <div class="input-modes">
+                <button type="button" class="mode-tab active" data-mode="address">🏠 주소</button>
+                <button type="button" class="mode-tab" data-mode="landmark">🏫 장소</button>
+                <button type="button" class="mode-tab" data-mode="gps">📍 GPS</button>
+            </div>
+            
             <div class="input-group">
-                <label for="address">현재 주소</label>
-                <input type="text" id="address" placeholder="예: 서울특별시 종로구 대학로" required autocomplete="off">
+                <label for="address" id="address-label">현재 주소</label>
+                <div class="address-input-wrapper">
+                    <input type="text" id="address" placeholder="예: 서울특별시 종로구 대학로" required autocomplete="off">
+                    <button type="button" id="gps-btn" class="gps-btn hidden" title="현재 위치 가져오기">📍 내 위치</button>
+                </div>
             </div>
             
             <div class="input-group">
@@ -42,6 +51,7 @@
         </form>
 
         <div id="error-message" class="error-message hidden"></div>
+        <div id="info-message" class="info-message hidden"></div>
 
         <section id="results-container" class="results-container hidden">
             <div class="warning-banner">

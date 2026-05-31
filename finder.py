@@ -1,118 +1,148 @@
 import os
-import sys
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+import concurrent.futures
 
-
-# 환경변수 로드 (.env 파일)
 load_dotenv()
 
-# 환경변수에서 API 키를 가져옵니다.
 KAKAO_REST_API_KEY = os.getenv("KAKAO_REST_API_KEY")
 PUBLIC_DATA_API_KEY = os.getenv("PUBLIC_DATA_API_KEY")
+TMAP_API_KEY = os.getenv("TMAP_API_KEY")
 
-def search_restaurants_kakao(keyword, lat, lng, page, radius=2000):
-    """
-    카카오 로컬 API를 사용하여 특정 위치 주변의 식당을 검색합니다. (페이지네이션 지원)
-    """
-    url = "https://dapi.kakao.com/v2/local/search/keyword.json"
-    headers = {
-        "Authorization": f"KakaoAK {KAKAO_REST_API_KEY}"
-    }
-    params = {
-        "query": keyword,
-        "x": lng,
-        "y": lat,
-        "radius": radius,
-        "category_group_code": "FD6", # 음식점 카테고리
-        "sort": "distance",           # 거리순 정렬
-        "page": page
-    }
+def get_address_from_coordinates(lat, lng):
+    url = "https://dapi.kakao.com/v2/local/geo/coord2address.json"
+    headers = {"Authorization": f"KakaoAK {KAKAO_REST_API_KEY}"}
+    params = {"x": lng, "y": lat}
     
     try:
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
-        data = response.json()
-        documents = data.get('documents', [])
-        is_end = data.get('meta', {}).get('is_end', True)
-        return documents, is_end
+        docs = response.json().get('documents', [])
+        if docs:
+            address_info = docs[0].get('road_address') or docs[0].get('address')
+            return address_info.get('address_name')
     except Exception as e:
-        print(f"[오류] 카카오 로컬 API 요청 실패: {e}")
-        return [], True
+        print(f"[오류] 좌표->주소 변환 실패: {e}")
+    return None
 
-def get_coordinates_from_address(address):
-    """
-    카카오 로컬 API를 사용하여 주소를 위도/경도로 변환합니다.
-    """
+def get_coordinates_from_address(query):
     url = "https://dapi.kakao.com/v2/local/search/address.json"
-    headers = {
-        "Authorization": f"KakaoAK {KAKAO_REST_API_KEY}"
-    }
-    params = {
-        "query": address
-    }
+    headers = {"Authorization": f"KakaoAK {KAKAO_REST_API_KEY}"}
+    params = {"query": query}
     
     try:
         response = requests.get(url, headers=headers, params=params)
-        response.raise_for_status()
-        documents = response.json().get('documents', [])
-        if documents:
-            # 첫 번째 검색 결과의 좌표 반환 (y: 위도, x: 경도)
-            return float(documents[0]['y']), float(documents[0]['x'])
-    except Exception as e:
-        print(f"[오류] 주소 검색 API 요청 실패: {e}")
-        
-    return None, None
+        docs = response.json().get('documents', [])
+        if docs:
+            addr = docs[0].get('address', {})
+            depth1 = addr.get('region_1depth_name', '')
+            depth2 = addr.get('region_2depth_name', '')
+            return float(docs[0]['y']), float(docs[0]['x']), depth1, depth2
+    except:
+        pass
 
-def check_good_price_store(restaurant_name, address, keyword):
-    """
-    제공된 착한가격업소 API(ODCloud)를 호출하여 키워드에 해당하는 메뉴와 가격 정보를 확인합니다.
-    매칭되는 메뉴가 있으면 (메뉴문자열, True)를 반환하고, 없으면 (None, False)를 반환합니다.
-    """
-    if not PUBLIC_DATA_API_KEY:
-        return None, False
+    url_kw = "https://dapi.kakao.com/v2/local/search/keyword.json"
+    try:
+        response = requests.get(url_kw, headers=headers, params=params)
+        docs = response.json().get('documents', [])
+        if docs:
+            addr_name = docs[0].get('address_name', '')
+            parts = addr_name.split()
+            depth1 = parts[0] if len(parts) > 0 else ''
+            depth2 = parts[1] if len(parts) > 1 else ''
+            return float(docs[0]['y']), float(docs[0]['x']), depth1, depth2
+    except:
+        pass
         
-    url = "https://api.odcloud.kr/api/3045247/v1/uddi:12a36b40-6230-4401-b647-b8456a789c7f"
-    params = {
-        "serviceKey": PUBLIC_DATA_API_KEY,
-        "page": 1,
-        "perPage": 10,
-        "cond[업소명::EQ]": restaurant_name # 업소명 필터링
+    return None, None, '', ''
+
+def get_walking_distance(start_lat, start_lng, end_lat, end_lng):
+    if not TMAP_API_KEY:
+        return None, None
+        
+    url = "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1"
+    headers = {
+        "appkey": TMAP_API_KEY,
+        "Accept": "application/json"
+    }
+    payload = {
+        "startX": start_lng, "startY": start_lat,
+        "endX": end_lng, "endY": end_lat,
+        "startName": "출발", "endName": "도착",
+        "reqCoordType": "WGS84GEO", "resCoordType": "WGS84GEO"
     }
     
     try:
-        response = requests.get(url, params=params)
+        response = requests.post(url, headers=headers, json=payload, timeout=3)
         if response.status_code == 200:
             data = response.json()
-            items = data.get('data', [])
-            
+            features = data.get('features', [])
+            if features:
+                props = features[0].get('properties', {})
+                return props.get('totalDistance'), props.get('totalTime')
+    except Exception as e:
+        print(f"[오류] TMAP API 실패: {e}")
+    return None, None
+
+def search_restaurants_kakao(keyword, lat, lng, page, radius=2000):
+    url = "https://dapi.kakao.com/v2/local/search/keyword.json"
+    headers = {"Authorization": f"KakaoAK {KAKAO_REST_API_KEY}"}
+    params = {
+        "query": keyword, "x": lng, "y": lat, "radius": radius,
+        "category_group_code": "FD6", "sort": "distance", "page": page
+    }
+    try:
+        response = requests.get(url, headers=headers, params=params)
+        data = response.json()
+        return data.get('documents', []), data.get('meta', {}).get('is_end', True)
+    except:
+        return [], True
+
+def check_good_price_store(restaurant_name, address, keyword):
+    if not PUBLIC_DATA_API_KEY: return None, False
+    url = "https://api.odcloud.kr/api/3045247/v1/uddi:12a36b40-6230-4401-b647-b8456a789c7f"
+    params = {"serviceKey": PUBLIC_DATA_API_KEY, "page": 1, "perPage": 10, "cond[업소명::EQ]": restaurant_name}
+    try:
+        response = requests.get(url, params=params, timeout=3)
+        if response.status_code == 200:
+            items = response.json().get('data', [])
             for item in items:
-                # 키워드가 포함된 메뉴 찾기
                 for i in range(1, 5):
                     menu = item.get(f'메뉴{i}')
                     if menu and keyword.lower() in menu.lower():
                         price = item.get(f'가격{i}') or '정보 없음'
                         return f"🟢 착한가격업소: {menu} ({price}원)", True
-                
-    except Exception as e:
+    except:
         pass
-        
     return None, False
 
 def parse_kakao_place(place_url, keyword):
-    """
-    카카오 플레이스는 동적 웹페이지(SPA)로 구성되어 있어 BeautifulSoup으로 메뉴 텍스트를 파싱하기 어렵습니다.
-    하지만 이미 카카오 로컬 API에서 '키워드' 기반으로 검색된 결과이므로, 
-    해당 메뉴를 팔고 있을 확률이 매우 높습니다. 따라서 무조건 상세 링크를 제공하도록 True를 반환합니다.
-    """
     return f"메뉴 가격 파싱 불가 (식당 상세 페이지에서 직접 메뉴판 확인 가능)", True
 
-def search_food(address, keyword, offset=0):
-    lat, lng = get_coordinates_from_address(address)
+def search_food(location_data, keyword, offset=0):
+    warning_msg = None
     
-    if lat is None or lng is None:
-        return {"error": "해당 주소의 위치를 찾을 수 없습니다. 정확한 주소를 입력해주세요."}
+    if 'lat' in location_data and 'lng' in location_data:
+        lat, lng = float(location_data['lat']), float(location_data['lng'])
+        address_name = get_address_from_coordinates(lat, lng)
+        if not address_name:
+            return {"error": "GPS 좌표를 주소로 변환할 수 없습니다."}
+        
+        parts = address_name.split()
+        depth1 = parts[0] if len(parts) > 0 else ''
+        depth2 = parts[1] if len(parts) > 1 else ''
+    else:
+        address = location_data.get('address', '')
+        lat, lng, depth1, depth2 = get_coordinates_from_address(address)
+        if lat is None:
+            return {"error": "해당 위치를 찾을 수 없습니다. 정확한 주소나 장소명을 입력해주세요."}
+
+    if not depth1.startswith("서울"):
+        return {"error": "서울 지역이 아닙니다. 서울 내의 위치만 검색 가능합니다."}
+        
+    if not depth2:
+        warning_msg = "더 구체적인 주소가 입력되면 더 정확한 정보를 줄 수 있습니다."
 
     results = []
     valid_count = 0
@@ -126,14 +156,26 @@ def search_food(address, keyword, offset=0):
         if not restaurants and page == 1:
             return {"error": "조건에 맞는 식당을 전혀 찾지 못했습니다."}
             
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_r = {}
+            for r in restaurants:
+                future = executor.submit(get_walking_distance, lat, lng, float(r.get('y')), float(r.get('x')))
+                future_to_r[future] = r
+                
+            for future in concurrent.futures.as_completed(future_to_r):
+                r = future_to_r[future]
+                dist, time_sec = future.result()
+                r['tmap_dist'] = dist if dist is not None else 999999
+                r['tmap_time'] = time_sec
+                
+        restaurants.sort(key=lambda x: x['tmap_dist'])
+
         for r in restaurants:
             name = r.get('place_name')
             addr = r.get('road_address_name') or r.get('address_name')
-            distance = r.get('distance')
             place_url = r.get('place_url')
             
             menu_info, is_matched = check_good_price_store(name, addr, keyword)
-            
             if not is_matched:
                 menu_info, is_matched = parse_kakao_place(place_url, keyword)
                 
@@ -143,10 +185,18 @@ def search_food(address, keyword, offset=0):
                     continue
                     
                 valid_count += 1
+                
+                t_dist = r.get('tmap_dist')
+                t_time = r.get('tmap_time')
+                
+                dist_str = f"도보 {t_dist}m" if t_dist != 999999 else f"직선 {r.get('distance')}m"
+                time_str = f"약 {t_time // 60}분 소요" if t_time else ""
+                
                 results.append({
                     "name": name,
                     "address": addr,
-                    "distance": distance,
+                    "distance": dist_str,
+                    "walk_time": time_str,
                     "menu": menu_info,
                     "url": place_url,
                     "lat": float(r.get('y')),
@@ -163,4 +213,8 @@ def search_food(address, keyword, offset=0):
     if valid_count == 0:
         return {"error": f"주변 반경 내에 '{keyword}' 메뉴를 확인할 수 있는 식당이 없습니다."}
         
-    return {"results": results, "count": valid_count, "center": {"lat": lat, "lng": lng}}
+    response_data = {"results": results, "count": valid_count, "center": {"lat": lat, "lng": lng}}
+    if warning_msg:
+        response_data["warning"] = warning_msg
+        
+    return response_data

@@ -488,3 +488,14 @@ input::placeholder {
     transform: rotate(45deg);
 }
 
+
+
+/* New UI elements */
+.input-modes { display: flex; gap: 0.5rem; margin-bottom: 1rem; justify-content: center; }
+.mode-tab { flex: 1; padding: 0.5rem; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-color); border-radius: 8px; cursor: pointer; transition: all 0.3s; font-size: 0.9rem; }
+.mode-tab.active { background: var(--primary-gradient); color: white; border-color: transparent; }
+.address-input-wrapper { display: flex; gap: 0.5rem; }
+.address-input-wrapper input { flex: 1; }
+.gps-btn { padding: 0.8rem; background: var(--glass-bg); color: var(--text-color); border: 1px solid var(--glass-border); border-radius: 12px; cursor: pointer; transition: all 0.3s; white-space: nowrap; }
+.gps-btn:hover { background: rgba(255, 255, 255, 0.1); }
+.info-message { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: center; animation: fadeIn 0.5s ease backwards; }
