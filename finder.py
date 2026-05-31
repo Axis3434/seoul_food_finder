@@ -154,7 +154,7 @@ def check_good_price_store(restaurant_name, address, keyword):
     return None, False
 
 def parse_kakao_place(place_url, keyword):
-    return f"식당 상세 페이지에서 직접 메뉴판 확인 가능", True
+    return f"아래 '상세 정보 보기'를 눌러 전체 메뉴와 가격을 확인해 보세요! 😊", True
 
 def search_food(location_data, keyword, offset=0):
     warning_msg = None
