@@ -211,6 +211,18 @@ document.addEventListener('DOMContentLoaded', () => {
         markers.forEach(m => map.removeLayer(m));
         markers = [];
         
+        // Add Origin (Start) Marker
+        const originIcon = L.divIcon({
+            className: 'custom-marker',
+            html: `<div class="marker-number" style="background: #3b82f6;"><span>📍</span></div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -32]
+        });
+        const originMarker = L.marker([center.lat, center.lng], {icon: originIcon, zIndexOffset: 1000}).addTo(map);
+        originMarker.bindPopup(`<b>출발지 (검색 기준 위치)</b>`).openPopup();
+        markers.push(originMarker);
+        
         pagesData.forEach((pageData, pIndex) => {
             if (!pageData) return;
             pageData.results.forEach((item, index) => {
