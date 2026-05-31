@@ -36,13 +36,14 @@ def get_coordinates_from_address(query):
     try:
         response = requests.get(url, headers=headers, params=params)
         if response.status_code in [429, 403]:
-            return None, None, 'LIMIT_EXCEEDED', ''
+            return None, None, 'LIMIT_EXCEEDED', '', '', ''
         docs = response.json().get('documents', [])
         if docs:
             addr = docs[0].get('address', {})
             depth1 = addr.get('region_1depth_name', '')
-            depth2 = addr.get('region_2depth_name', '')
-            return float(docs[0]['y']), float(docs[0]['x']), depth1, depth2
+            address_name = docs[0].get('address_name', '')
+            address_type = docs[0].get('address_type', '')
+            return float(docs[0]['y']), float(docs[0]['x']), depth1, address_name, address_type, 'ADDRESS'
     except:
         pass
 
@@ -50,18 +51,17 @@ def get_coordinates_from_address(query):
     try:
         response = requests.get(url_kw, headers=headers, params=params)
         if response.status_code in [429, 403]:
-            return None, None, 'LIMIT_EXCEEDED', ''
+            return None, None, 'LIMIT_EXCEEDED', '', '', ''
         docs = response.json().get('documents', [])
         if docs:
             addr_name = docs[0].get('address_name', '')
             parts = addr_name.split()
             depth1 = parts[0] if len(parts) > 0 else ''
-            depth2 = parts[1] if len(parts) > 1 else ''
-            return float(docs[0]['y']), float(docs[0]['x']), depth1, depth2
+            return float(docs[0]['y']), float(docs[0]['x']), depth1, addr_name, '', 'KEYWORD'
     except:
         pass
         
-    return None, None, '', ''
+    return None, None, '', '', '', ''
 
 def get_walking_distance(start_lat, start_lng, end_lat, end_lng):
     if not TMAP_API_KEY:
@@ -146,7 +146,7 @@ def search_food(location_data, keyword, offset=0):
         depth2 = parts[1] if len(parts) > 1 else ''
     else:
         address = location_data.get('address', '')
-        lat, lng, depth1, depth2 = get_coordinates_from_address(address)
+        lat, lng, depth1, address_name, address_type, search_mode = get_coordinates_from_address(address)
         if depth1 == "LIMIT_EXCEEDED":
             return {"error": "오늘 제공 가능한 무료 검색 한도가 모두 소진되었습니다. 매일 자정(밤 12시)에 초기화되니 내일 다시 이용해주세요!"}
         if lat is None:
@@ -155,8 +155,8 @@ def search_food(location_data, keyword, offset=0):
     if not depth1.startswith("서울"):
         return {"error": "서울 지역이 아닙니다. 서울 내의 위치만 검색 가능합니다."}
         
-    if not depth2:
-        warning_msg = "더 구체적인 주소가 입력되면 더 정확한 정보를 줄 수 있습니다."
+    if 'address' in location_data and search_mode == 'ADDRESS' and address_type == 'REGION':
+        warning_msg = f"[{address_name}]에 있는 임의의 위치를 기준으로 검색된 결과입니다. 더 정확한 정보를 얻으려면 더 구체적인 주소를 입력해주세요."
 
     results = []
     valid_count = 0
