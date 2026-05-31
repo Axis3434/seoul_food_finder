@@ -17,6 +17,8 @@ def get_address_from_coordinates(lat, lng):
     
     try:
         response = requests.get(url, headers=headers, params=params)
+        if response.status_code in [429, 403]:
+            return "LIMIT_EXCEEDED"
         response.raise_for_status()
         docs = response.json().get('documents', [])
         if docs:
@@ -33,6 +35,8 @@ def get_coordinates_from_address(query):
     
     try:
         response = requests.get(url, headers=headers, params=params)
+        if response.status_code in [429, 403]:
+            return None, None, 'LIMIT_EXCEEDED', ''
         docs = response.json().get('documents', [])
         if docs:
             addr = docs[0].get('address', {})
@@ -45,6 +49,8 @@ def get_coordinates_from_address(query):
     url_kw = "https://dapi.kakao.com/v2/local/search/keyword.json"
     try:
         response = requests.get(url_kw, headers=headers, params=params)
+        if response.status_code in [429, 403]:
+            return None, None, 'LIMIT_EXCEEDED', ''
         docs = response.json().get('documents', [])
         if docs:
             addr_name = docs[0].get('address_name', '')
@@ -75,6 +81,8 @@ def get_walking_distance(start_lat, start_lng, end_lat, end_lng):
     
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=3)
+        if response.status_code in [429, 403]:
+            return "LIMIT_EXCEEDED", None
         if response.status_code == 200:
             data = response.json()
             features = data.get('features', [])
@@ -94,6 +102,8 @@ def search_restaurants_kakao(keyword, lat, lng, page, radius=2000):
     }
     try:
         response = requests.get(url, headers=headers, params=params)
+        if response.status_code in [429, 403]:
+            return "LIMIT_EXCEEDED", True
         data = response.json()
         return data.get('documents', []), data.get('meta', {}).get('is_end', True)
     except:
@@ -126,6 +136,8 @@ def search_food(location_data, keyword, offset=0):
     if 'lat' in location_data and 'lng' in location_data:
         lat, lng = float(location_data['lat']), float(location_data['lng'])
         address_name = get_address_from_coordinates(lat, lng)
+        if address_name == "LIMIT_EXCEEDED":
+            return {"error": "오늘 제공 가능한 무료 검색 한도가 모두 소진되었습니다. 매일 자정(밤 12시)에 초기화되니 내일 다시 이용해주세요!"}
         if not address_name:
             return {"error": "GPS 좌표를 주소로 변환할 수 없습니다."}
         
@@ -135,6 +147,8 @@ def search_food(location_data, keyword, offset=0):
     else:
         address = location_data.get('address', '')
         lat, lng, depth1, depth2 = get_coordinates_from_address(address)
+        if depth1 == "LIMIT_EXCEEDED":
+            return {"error": "오늘 제공 가능한 무료 검색 한도가 모두 소진되었습니다. 매일 자정(밤 12시)에 초기화되니 내일 다시 이용해주세요!"}
         if lat is None:
             return {"error": "해당 위치를 찾을 수 없습니다. 정확한 주소나 장소명을 입력해주세요."}
 
@@ -153,6 +167,9 @@ def search_food(location_data, keyword, offset=0):
     while valid_count < 5 and not is_end:
         restaurants, is_end = search_restaurants_kakao(keyword, lat, lng, page)
         
+        if restaurants == "LIMIT_EXCEEDED":
+            return {"error": "오늘 제공 가능한 무료 검색 한도가 모두 소진되었습니다. 매일 자정(밤 12시)에 초기화되니 내일 다시 이용해주세요!"}
+            
         if not restaurants and page == 1:
             return {"error": "조건에 맞는 식당을 전혀 찾지 못했습니다."}
             
@@ -165,6 +182,8 @@ def search_food(location_data, keyword, offset=0):
             for future in concurrent.futures.as_completed(future_to_r):
                 r = future_to_r[future]
                 dist, time_sec = future.result()
+                if dist == "LIMIT_EXCEEDED":
+                    return {"error": "오늘 제공 가능한 무료 길찾기 한도가 모두 소진되었습니다. 매일 자정(밤 12시)에 초기화되니 내일 다시 이용해주세요!"}
                 r['tmap_dist'] = dist if dist is not None else 999999
                 r['tmap_time'] = time_sec
                 
